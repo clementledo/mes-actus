@@ -7,7 +7,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -48,7 +47,7 @@ class Repository {
             .sortedByDescending { it.published }
             .distinctBy { it.id }
             .filter { seenTitles.add(TextNormalizer.normalize(it.title)) }
-            .take(200)
+            .take(500)
         ZoneResult(articles, failed)
     }
 
@@ -62,26 +61,6 @@ class Repository {
             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
             val html = resp.body?.string() ?: throw IOException("Réponse vide")
             ReaderExtractor.extract(html, resp.request.url.toString(), article)
-        }
-    }
-
-    suspend fun fetchWeather(country: Country): Weather = withContext(Dispatchers.IO) {
-        val url = "https://api.open-meteo.com/v1/forecast?latitude=${country.lat}&longitude=${country.lon}" +
-            "&current=temperature_2m,weather_code,wind_speed_10m,is_day" +
-            "&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1"
-        http.newCall(request(url)).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-            val json = JSONObject(resp.body!!.string())
-            val cur = json.getJSONObject("current")
-            val daily = json.getJSONObject("daily")
-            Weather(
-                temperature = cur.getDouble("temperature_2m"),
-                code = cur.getInt("weather_code"),
-                wind = cur.getDouble("wind_speed_10m"),
-                max = daily.getJSONArray("temperature_2m_max").getDouble(0),
-                min = daily.getJSONArray("temperature_2m_min").getDouble(0),
-                isDay = cur.optInt("is_day", 1) == 1,
-            )
         }
     }
 }

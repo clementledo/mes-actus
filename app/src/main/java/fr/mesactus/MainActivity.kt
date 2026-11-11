@@ -11,11 +11,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import fr.mesactus.ui.ArticleScreen
-import fr.mesactus.ui.HomeScreen
+import fr.mesactus.ui.BriefScreen
 import fr.mesactus.ui.MainViewModel
-import fr.mesactus.ui.SearchScreen
 import fr.mesactus.ui.SettingsScreen
-import fr.mesactus.ui.SourcesScreen
 import fr.mesactus.ui.theme.MesActusTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,27 +25,16 @@ class MainActivity : ComponentActivity() {
             val settings by vm.settings.collectAsStateWithLifecycle()
             MesActusTheme(settings.theme) {
                 val nav = rememberNavController()
-                NavHost(navController = nav, startDestination = "home") {
-                    composable("home") {
-                        HomeScreen(
+                NavHost(navController = nav, startDestination = "brief") {
+                    composable("brief") {
+                        BriefScreen(
                             vm = vm,
-                            onOpenArticle = { vm.openArticle(it); nav.navigate("article") },
-                            onSearch = { nav.navigate("search") },
+                            onOpen = { vm.openStory(it); nav.navigate("article") },
                             onSettings = { nav.navigate("settings") },
                         )
                     }
                     composable("article") { ArticleScreen(vm = vm, onBack = { nav.popBackStack() }) }
-                    composable("search") {
-                        SearchScreen(
-                            vm = vm,
-                            onBack = { nav.popBackStack() },
-                            onOpenArticle = { vm.openArticle(it); nav.navigate("article") },
-                        )
-                    }
-                    composable("settings") {
-                        SettingsScreen(vm = vm, onBack = { nav.popBackStack() }, onSources = { nav.navigate("sources") })
-                    }
-                    composable("sources") { SourcesScreen(vm = vm, onBack = { nav.popBackStack() }) }
+                    composable("settings") { SettingsScreen(vm = vm, onBack = { nav.popBackStack() }) }
                 }
             }
         }

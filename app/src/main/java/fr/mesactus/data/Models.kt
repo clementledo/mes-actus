@@ -1,37 +1,25 @@
 package fr.mesactus.data
 
-enum class Country(
-    val label: String,
-    val flag: String,
-    val city: String,
-    val lat: Double,
-    val lon: Double,
-    val timeZone: String,
-    val defaultLang: String,
-) {
-    FRANCE("France", "🇫🇷", "Orléans", 47.9029, 1.9093, "Europe/Paris", "fr"),
-    CANADA("Canada", "🇨🇦", "Montréal", 45.5019, -73.5674, "America/Toronto", "fr"),
-    SPAIN("Espagne", "🇪🇸", "Grenade", 37.1773, -3.5986, "Europe/Madrid", "es"),
+enum class Zone(val label: String) {
+    FR_NAT("France"),
+    FR_REG("Centre-Val de Loire"),
+    FR_CITY("Orléans"),
+    CA_NAT("Canada"),
+    CA_REG("Québec"),
+    CA_CITY("Montréal"),
+    ES_NAT("Espagne"),
+    ES_REG("Andalousie"),
+    ES_CITY("Grenade"),
 }
 
-enum class Level { NATIONAL, REGION, CITY }
-
-enum class Zone(val country: Country, val level: Level, val label: String) {
-    FR_NAT(Country.FRANCE, Level.NATIONAL, "National"),
-    FR_REG(Country.FRANCE, Level.REGION, "Centre-Val de Loire"),
-    FR_CITY(Country.FRANCE, Level.CITY, "Orléans & métropole"),
-    CA_NAT(Country.CANADA, Level.NATIONAL, "National"),
-    CA_REG(Country.CANADA, Level.REGION, "Québec"),
-    CA_CITY(Country.CANADA, Level.CITY, "Île de Montréal"),
-    ES_NAT(Country.SPAIN, Level.NATIONAL, "National"),
-    ES_REG(Country.SPAIN, Level.REGION, "Andalousie"),
-    ES_CITY(Country.SPAIN, Level.CITY, "Grenade & agglo");
-
-    val fullLabel: String get() = if (level == Level.NATIONAL) "${country.label} – National" else label
-
-    companion object {
-        fun of(country: Country): List<Zone> = entries.filter { it.country == country }
-    }
+/** Les rubriques de la page « L'essentiel », dans l'ordre d'affichage. */
+enum class Section(val title: String, val flag: String, val zones: List<Zone>, val count: Int) {
+    FRANCE("France", "🇫🇷", listOf(Zone.FR_NAT), 5),
+    ORLEANS("Orléans & Loiret", "📍", listOf(Zone.FR_CITY, Zone.FR_REG), 3),
+    CANADA("Canada & Québec", "🇨🇦", listOf(Zone.CA_NAT, Zone.CA_REG), 5),
+    MONTREAL("Montréal", "📍", listOf(Zone.CA_CITY), 3),
+    ESPAGNE("Espagne", "🇪🇸", listOf(Zone.ES_NAT), 5),
+    GRENADE("Grenade & Andalousie", "📍", listOf(Zone.ES_CITY, Zone.ES_REG), 3),
 }
 
 data class Source(
@@ -40,8 +28,6 @@ data class Source(
     val url: String,
     val zone: Zone,
     val lang: String,
-    val enabled: Boolean = true,
-    val custom: Boolean = false,
 )
 
 data class Article(
@@ -54,8 +40,12 @@ data class Article(
     val sourceName: String,
     val zone: Zone,
     val lang: String,
-    val categories: Set<Category>,
+    /** Position dans le flux d'origine (0 = en tête de la une). */
+    val rank: Int,
 )
+
+/** Un sujet d'actualité : l'article mis en avant et les médias qui en parlent. */
+data class Story(val lead: Article, val outlets: List<String>, val score: Double)
 
 enum class BlockType { PARAGRAPH, HEADING }
 
@@ -69,14 +59,9 @@ data class ReaderContent(
     val partial: Boolean = false,
 )
 
-data class Favorite(val article: Article, val content: ReaderContent?, val savedAt: Long)
-
 enum class ThemeMode(val label: String) { SYSTEM("Selon le système"), LIGHT("Clair"), DARK("Sombre") }
-
-enum class ListStyle(val label: String) { CARDS("Cartes avec image"), COMPACT("Liste compacte"), TITLES("Titres seuls") }
 
 data class Settings(
     val theme: ThemeMode = ThemeMode.SYSTEM,
-    val listStyle: ListStyle = ListStyle.COMPACT,
-    val hiddenZones: Set<Zone> = emptySet(),
+    val hiddenSections: Set<Section> = emptySet(),
 )

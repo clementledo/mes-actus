@@ -1,42 +1,37 @@
 # Mes Actus
 
-Application Android d'actualités : France (Orléans & métropole), Canada (Québec, île de Montréal), Espagne (Grenade & agglo).
+Les plus grosses infos du moment, sur une seule page : France, Orléans & Loiret, Canada & Québec, Montréal,
+Espagne, Grenade & Andalousie.
 
 ## Installer sur le téléphone
 
 1. Depuis le téléphone, téléchargez `MesActus.apk` dans la [dernière release](../../releases/latest).
-2. Ouvrez le fichier depuis le téléphone. Android demande d'autoriser l'installation depuis cette application
-   (« Sources inconnues ») : acceptez pour cette fois.
-3. Lancez **Mes Actus**.
+2. Ouvrez le fichier. Android demande d'autoriser l'installation depuis votre navigateur : acceptez.
+3. Lancez **Mes Actus**. Une version plus récente s'installe par-dessus l'ancienne.
 
-Ou, le téléphone branché en USB avec le débogage USB activé :
+## Comment les grands titres sont choisis
 
-```
-adb install -r MesActus.apk
-```
+L'app lit les unes de chaque zone (Le Monde, Franceinfo, France 3, Radio-Canada, La Presse, Le Devoir, El País,
+RTVE, Ideal, Europa Press, Google Actualités…), regroupe les articles qui parlent du même sujet, puis note chaque
+sujet selon :
+
+- le nombre de médias qui en parlent ;
+- sa place en tête des unes ;
+- sa fraîcheur (au-delà de 36 h, il disparaît).
+
+Chaque rubrique affiche le sujet principal en grand, puis 2 à 4 autres titres, un seul titre par événement.
 
 ## Utilisation
 
-- **Barre du bas** : France, Canada, Espagne, Favoris.
-- **Onglets du haut** : National, Région, Ville. Les zones précises se masquent dans *Réglages → Zones affichées*.
-- **Puces de thèmes** : Politique, Économie, Sport, Culture, Faits divers, Société, Sciences, Santé, Environnement.
-  Le classement se fait automatiquement par mots-clés.
-- **Tirer vers le bas** pour actualiser.
-- **Article** : mode lecture épuré. ⭐ pour l'ajouter aux favoris (le texte est enregistré et reste lisible sans réseau),
-  bouton *Traduire en français* pour les articles en espagnol ou en anglais (traduction sur le téléphone ; le modèle de
-  ~30 Mo est téléchargé une seule fois).
-- **Loupe** : recherche dans toutes les zones.
-- **Réglages → Gérer les sources** : activer, désactiver, ajouter un flux RSS (testé avant l'ajout) ou revenir à la liste d'origine.
+- **Tirer vers le bas** pour actualiser (automatique si l'app n'a pas été ouverte depuis 20 minutes).
+- **Toucher un titre** : article en mode lecture, bouton *Traduire en français* pour l'espagnol, partage.
+- **⚙️ Réglages** : rubriques affichées, thème clair ou sombre.
 
 ## Limites connues
 
-- L'APK est compilé pour les téléphones 64 bits (arm64, la quasi-totalité des téléphones depuis 2017) sous Android 8 ou plus.
-  Pour un vieux téléphone 32 bits, ajoutez `"armeabi-v7a"` à `abiFilters` dans `app/build.gradle.kts`.
-- El País, La Presse et les articles réservés aux abonnés bloquent l'extraction : l'app affiche le résumé.
-
-- Les articles venant de *Google Actualités* ne s'affichent qu'avec leur titre : le bouton « Lire l'article sur le site »
-  ouvre la page du média.
-- Certains sites (articles payants, pages très dynamiques) ne se laissent pas extraire : l'app affiche alors le résumé RSS.
+- Téléphones 64 bits (arm64) sous Android 8 ou plus.
+- El País, La Presse et les articles réservés aux abonnés ne se laissent pas afficher dans l'app :
+  le bouton « Lire sur … » ouvre le site.
 
 ## Recompiler
 
@@ -46,4 +41,4 @@ Il faut Java 17 (`JAVA_HOME`) et le SDK Android 35 (`sdk.dir` dans `local.proper
 gradlew.bat assembleRelease
 ```
 
-L'APK est produit dans `app\build\outputs\apk\release\app-release.apk`. Le projet s'ouvre aussi dans Android Studio.
+L'APK est produit dans `app\build\outputs\apk\release\app-release.apk`.

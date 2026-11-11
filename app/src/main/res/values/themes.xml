@@ -1,6 +1,7 @@
 <resources>
     <style name="Theme.MesActus" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@color/paper</item>
     </style>
-    <color name="ic_launcher_background">#1E5AA8</color>
+    <color name="ic_launcher_background">#1D3557</color>
+    <color name="paper">#F7F4EE</color>
 </resources>

@@ -39,7 +39,7 @@ object RssParser {
             // Flux mal formé : on garde ce qui a déjà été lu, sinon on remonte l'erreur.
             if (items.isEmpty()) throw e
         }
-        return items.mapNotNull { toArticle(it, source) }
+        return items.mapIndexedNotNull { i, raw -> toArticle(raw, source, i) }
     }
 
     private fun loop(parser: XmlPullParser, items: MutableList<Raw>) {
@@ -116,7 +116,7 @@ object RssParser {
         return sb.toString().trim()
     }
 
-    private fun toArticle(r: Raw, source: Source): Article? {
+    private fun toArticle(r: Raw, source: Source, rank: Int): Article? {
         val link = r.link.ifBlank { r.guid.takeIf { it.startsWith("http") } ?: "" }.trim()
         if (link.isEmpty()) return null
         var title = Jsoup.parse(r.title).text().trim()
@@ -150,7 +150,7 @@ object RssParser {
             sourceName = sourceName,
             zone = source.zone,
             lang = source.lang,
-            categories = Category.classify(title, description, r.categories),
+            rank = rank,
         )
     }
 
