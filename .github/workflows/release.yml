@@ -20,7 +20,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SIGNING_KEYSTORE: ${{ runner.temp }}/mesactus.p12
       SIGNING_PASSWORD: mesactus-signature
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +36,8 @@ jobs:
       # pour que les mises à jour s'installent par-dessus l'ancienne version.
       - name: Clé de signature
         run: |
+          SIGNING_KEYSTORE="$RUNNER_TEMP/mesactus.p12"
+          echo "SIGNING_KEYSTORE=$SIGNING_KEYSTORE" >> "$GITHUB_ENV"
           id=$(gh api "repos/$REPO/releases?per_page=100" --jq '[.[] | select(.draft and .name == "signing-key")][0].id // empty')
           if [ -n "$id" ]; then
             asset=$(gh api "repos/$REPO/releases/$id/assets" --jq '[.[] | select(.name == "mesactus.p12")][0].id')
