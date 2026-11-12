@@ -14,7 +14,13 @@ import fr.mesactus.data.Section
 import fr.mesactus.data.Settings
 import fr.mesactus.data.SettingsStore
 import fr.mesactus.data.Story
+import fr.mesactus.BuildConfig
+import fr.mesactus.data.AppUpdate
+import fr.mesactus.data.Updater
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +44,13 @@ data class ReaderState(
     val translateError: String? = null,
 )
 
+data class UpdateState(
+    val available: AppUpdate? = null,
+    val downloading: Boolean = false,
+    val progress: Float = 0f,
+    val error: String? = null,
+)
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = Repository()
@@ -58,15 +71,51 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _reader = MutableStateFlow(ReaderState())
     val reader: StateFlow<ReaderState> = _reader.asStateFlow()
 
+    private val _update = MutableStateFlow(UpdateState())
+    val update: StateFlow<UpdateState> = _update.asStateFlow()
+
     private var readerJob: Job? = null
     private var refreshJob: Job? = null
 
     init {
         refresh()
+        checkUpdate()
+    }
+
+    // ---------------- Mise à jour de l'app ----------------
+
+    fun checkUpdate() {
+        if (_update.value.downloading) return
+        viewModelScope.launch {
+            val found = runCatching { Updater.check(BuildConfig.VERSION_NAME) }.getOrNull()
+            _update.update { it.copy(available = found) }
+        }
+    }
+
+    fun installUpdate() {
+        val app = getApplication<Application>()
+        val upd = _update.value.available ?: return
+        if (_update.value.downloading) return
+        if (!Updater.canInstall(app)) {
+            Updater.openInstallPermission(app)
+            return
+        }
+        _update.update { it.copy(downloading = true, progress = 0f, error = null) }
+        viewModelScope.launch {
+            runCatching {
+                Updater.download(app, upd) { p -> _update.update { it.copy(progress = p) } }
+            }.onSuccess { file ->
+                _update.update { it.copy(downloading = false, progress = 1f) }
+                Updater.install(app, file)
+            }.onFailure { e ->
+                _update.update { it.copy(downloading = false, error = "Téléchargement impossible (${e.message ?: "réseau"})") }
+            }
+        }
     }
 
     /** Recharge si les infos ont plus de 20 minutes (au retour dans l'app). */
     fun refreshIfStale() {
+        checkUpdate()
         if (System.currentTimeMillis() - _updatedAt.value > 20 * 60_000) refresh()
     }
 
@@ -82,6 +131,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     val result = repo.fetchZone(sources)
                     val stories = Ranking.topStories(result.articles, section.count)
                     _brief.update { it + (section to SectionState(loading = false, stories = stories)) }
+                    // Ajoute un visuel aux grands titres qui n'en ont pas (image de la page de l'article).
+                    if (stories.any { it.lead.imageUrl == null }) {
+                        val withImages = stories.map { st ->
+                            async {
+                                if (st.lead.imageUrl != null) st
+                                else withTimeoutOrNull(8_000) { repo.fetchImage(st.lead.link) }
+                                    ?.let { st.copy(lead = st.lead.copy(imageUrl = it)) } ?: st
+                            }
+                        }.awaitAll()
+                        _brief.update { it + (section to SectionState(loading = false, stories = withImages)) }
+                    }
                 }
             }
             jobs.forEach { it.join() }

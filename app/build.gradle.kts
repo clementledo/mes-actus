@@ -12,17 +12,31 @@ android {
         applicationId = "fr.mesactus"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        // La fabrication sur GitHub donne le numéro de version (1.2, 1.3…).
+        versionCode = (System.getenv("VERSION_CODE") ?: "2").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: "1.1"
         // Téléphones Android récents (64 bits) uniquement : divise la taille de l'APK.
         ndk { abiFilters += "arm64-v8a" }
+    }
+
+    // Clé de signature stable, fournie par la fabrication GitHub (voir .github/workflows/release.yml) :
+    // chaque nouvelle version s'installe par-dessus l'ancienne. Sans elle, clé de debug locale.
+    val keystore = System.getenv("SIGNING_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (keystore != null) {
+            create("stable") {
+                storeFile = keystore
+                storePassword = System.getenv("SIGNING_PASSWORD")
+                keyAlias = "mesactus"
+                keyPassword = System.getenv("SIGNING_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Usage personnel : l'APK release est signé avec la clé de debug.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystore != null) signingConfigs.getByName("stable") else signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -34,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -1,0 +1,69 @@
+name: Fabriquer l'APK
+
+# Chaque envoi sur main fabrique un APK signé et le publie en release (v1.2, v1.3…).
+# L'app voit cette release et propose « Installer » sur son bandeau « Nouvelle version ».
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SIGNING_KEYSTORE: ${{ runner.temp }}/mesactus.p12
+      SIGNING_PASSWORD: mesactus-signature
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # La clé de signature est rangée dans une release brouillon : un brouillon n'est visible que du
+      # propriétaire du dépôt. Elle est créée au premier passage, puis réutilisée à chaque version,
+      # pour que les mises à jour s'installent par-dessus l'ancienne version.
+      - name: Clé de signature
+        run: |
+          id=$(gh api "repos/$REPO/releases?per_page=100" --jq '[.[] | select(.draft and .name == "signing-key")][0].id // empty')
+          if [ -n "$id" ]; then
+            asset=$(gh api "repos/$REPO/releases/$id/assets" --jq '[.[] | select(.name == "mesactus.p12")][0].id')
+            gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$asset" > "$SIGNING_KEYSTORE"
+            echo "Clé existante récupérée."
+          else
+            keytool -genkeypair -keystore "$SIGNING_KEYSTORE" -storetype PKCS12 -alias mesactus \
+              -keyalg RSA -keysize 2048 -validity 20000 \
+              -storepass "$SIGNING_PASSWORD" -keypass "$SIGNING_PASSWORD" -dname "CN=Mes Actus"
+            gh release create signing-key --repo "$REPO" --draft --title signing-key \
+              --notes "Clé de signature de l'APK. Brouillon privé : ne pas publier ni supprimer." "$SIGNING_KEYSTORE"
+            echo "Nouvelle clé créée."
+          fi
+
+      - name: Numéro de version
+        run: |
+          echo "VERSION_NAME=1.$(( ${{ github.run_number }} + 1 ))" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$(( ${{ github.run_number }} + 2 ))" >> "$GITHUB_ENV"
+
+      - name: Fabriquer et tester
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease testReleaseUnitTest
+          cp app/build/outputs/apk/release/app-release.apk MesActus.apk
+
+      - name: Publier la release
+        run: |
+          git log -1 --pretty=%B > notes.txt
+          gh release create "v$VERSION_NAME" MesActus.apk --repo "$REPO" --target "$GITHUB_SHA" \
+            --title "Mes Actus $VERSION_NAME" --notes-file notes.txt --latest

@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -79,6 +81,7 @@ fun BriefScreen(vm: MainViewModel, onOpen: (Story) -> Unit, onSettings: () -> Un
     val settings by vm.settings.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
     val updatedAt by vm.updatedAt.collectAsStateWithLifecycle()
+    val update by vm.update.collectAsStateWithLifecycle()
 
     LifecycleResumeEffect(Unit) {
         vm.refreshIfStale()
@@ -102,6 +105,9 @@ fun BriefScreen(vm: MainViewModel, onOpen: (Story) -> Unit, onSettings: () -> Un
                 contentPadding = PaddingValues(bottom = 32.dp),
             ) {
                 item(key = "header") { Header(updatedAt, refreshing, onSettings) }
+                if (update.available != null) {
+                    item(key = "update") { UpdateBanner(update, onInstall = { vm.installUpdate() }) }
+                }
                 sections.forEach { section ->
                     item(key = "s_" + section.name) {
                         SectionBlock(section, brief[section] ?: SectionState(), onOpen)
@@ -155,6 +161,43 @@ private fun Header(updatedAt: Long, refreshing: Boolean, onSettings: () -> Unit)
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
         )
+    }
+}
+
+@Composable
+private fun UpdateBanner(state: UpdateState, onInstall: () -> Unit) {
+    val version = state.available?.version ?: return
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF2E7D4F),
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+            .fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Nouvelle version $version", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    when {
+                        state.downloading -> "Téléchargement… ${(state.progress * 100).toInt()} %"
+                        state.error != null -> state.error
+                        else -> "Elle s'installe par-dessus, sans rien perdre."
+                    },
+                    color = Color.White.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            Button(
+                onClick = onInstall,
+                enabled = !state.downloading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF2E7D4F),
+                    disabledContainerColor = Color.White.copy(alpha = 0.6f),
+                    disabledContentColor = Color(0xFF2E7D4F),
+                ),
+            ) { Text(if (state.error != null) "Réessayer" else "Installer") }
+        }
     }
 }
 

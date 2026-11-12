@@ -51,6 +51,25 @@ class Repository {
         ZoneResult(articles, failed)
     }
 
+    /**
+     * Image d'un article dont le flux RSS n'en donne pas : on lit seulement le début de la page
+     * (balise og:image), pour que chaque grand titre ait son visuel.
+     */
+    suspend fun fetchImage(link: String): String? = withContext(Dispatchers.IO) {
+        if (link.contains("news.google.")) return@withContext null
+        runCatching {
+            http.newCall(request(link)).execute().use { resp ->
+                if (!resp.isSuccessful) return@use null
+                val source = resp.body?.source() ?: return@use null
+                source.request(300_000)
+                val head = source.buffer.snapshot().utf8()
+                val doc = org.jsoup.Jsoup.parse(head, resp.request.url.toString())
+                (doc.selectFirst("meta[property=og:image]") ?: doc.selectFirst("meta[name=twitter:image]"))
+                    ?.absUrl("content")?.ifBlank { null }
+            }
+        }.getOrNull()
+    }
+
     /** Télécharge la page et en extrait le texte (mode lecture). */
     suspend fun fetchReader(article: Article): ReaderContent = withContext(Dispatchers.IO) {
         if (article.link.contains("news.google.")) {

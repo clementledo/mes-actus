@@ -14,12 +14,12 @@ enum class Zone(val label: String) {
 
 /** Les rubriques de la page « L'essentiel », dans l'ordre d'affichage. */
 enum class Section(val title: String, val flag: String, val zones: List<Zone>, val count: Int) {
-    FRANCE("France", "🇫🇷", listOf(Zone.FR_NAT), 5),
-    ORLEANS("Orléans & Loiret", "📍", listOf(Zone.FR_CITY, Zone.FR_REG), 3),
-    CANADA("Canada & Québec", "🇨🇦", listOf(Zone.CA_NAT, Zone.CA_REG), 5),
-    MONTREAL("Montréal", "📍", listOf(Zone.CA_CITY), 3),
-    ESPAGNE("Espagne", "🇪🇸", listOf(Zone.ES_NAT), 5),
-    GRENADE("Grenade & Andalousie", "📍", listOf(Zone.ES_CITY, Zone.ES_REG), 3),
+    FRANCE("France", "🇫🇷", listOf(Zone.FR_NAT), 3),
+    ORLEANS("Orléans & Loiret", "📍", listOf(Zone.FR_CITY, Zone.FR_REG), 2),
+    CANADA("Canada & Québec", "🇨🇦", listOf(Zone.CA_NAT, Zone.CA_REG), 3),
+    MONTREAL("Montréal", "📍", listOf(Zone.CA_CITY), 2),
+    ESPAGNE("Espagne", "🇪🇸", listOf(Zone.ES_NAT), 3),
+    GRENADE("Grenade & Andalousie", "📍", listOf(Zone.ES_CITY, Zone.ES_REG), 2),
 }
 
 data class Source(
