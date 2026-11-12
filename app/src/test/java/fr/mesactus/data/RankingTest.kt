@@ -55,4 +55,16 @@ class RankingTest {
         val top = Ranking.topStories(listOf(g, d), 1, now)
         assertEquals("RTVE", top.first().lead.sourceName)
     }
+
+    @Test
+    fun localSectionKeepsOnlyLocalNews() {
+        val places = Section.ORLEANS.places!!
+        val local = art("Orléans : le tram fermé tout le week-end", "France 3 Centre-Val de Loire", 0, hoursAgo = 1.0)
+        val national = art("Budget 2027 : le gouvernement recule sur les retraites", "France 3 Centre-Val de Loire", 1, hoursAgo = 1.0)
+        val usa = art("La Nouvelle-Orléans sous les eaux", "Google", 2, hoursAgo = 1.0)
+        assertTrue(Ranking.isAbout(local, places, Section.ORLEANS.notPlaces))
+        assertFalse(Ranking.isAbout(national, places, Section.ORLEANS.notPlaces))
+        assertFalse(Ranking.isAbout(usa, places, Section.ORLEANS.notPlaces))
+        assertTrue(Ranking.isAbout(art("El Ayuntamiento de Granada aprueba el presupuesto", "Ideal", 0, hoursAgo = 1.0), Section.GRENADE.places!!))
+    }
 }

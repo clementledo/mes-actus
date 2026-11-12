@@ -47,7 +47,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.rememberCoroutineScope
+import fr.mesactus.data.Country
 import fr.mesactus.data.Section
+import kotlinx.coroutines.launch
 import fr.mesactus.data.Story
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -88,43 +93,92 @@ fun BriefScreen(vm: MainViewModel, onOpen: (Story) -> Unit, onSettings: () -> Un
         onPauseOrDispose { }
     }
 
-    val sections = Section.entries.filter { it !in settings.hiddenSections }
+    val countries = Country.entries
+    val pager = rememberPagerState { countries.size }
+    val scope = rememberCoroutineScope()
 
-    Box(
+    Column(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
+        Header(updatedAt, refreshing, onSettings)
+        if (update.available != null) UpdateBanner(update, onInstall = { vm.installUpdate() })
+        CountryTabs(countries, pager.currentPage) { i -> scope.launch { pager.animateScrollToPage(i) } }
+
         PullToRefreshBox(
             isRefreshing = refreshing && updatedAt > 0,
             onRefresh = { vm.refresh() },
             modifier = Modifier.fillMaxSize(),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 32.dp),
-            ) {
-                item(key = "header") { Header(updatedAt, refreshing, onSettings) }
-                if (update.available != null) {
-                    item(key = "update") { UpdateBanner(update, onInstall = { vm.installUpdate() }) }
-                }
-                sections.forEach { section ->
-                    item(key = "s_" + section.name) {
-                        SectionBlock(section, brief[section] ?: SectionState(), onOpen)
+            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
+                val sections = Section.entries.filter { it.country == countries[page] && it !in settings.hiddenSections }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 32.dp),
+                ) {
+                    if (sections.isEmpty()) {
+                        item(key = "none") {
+                            Text(
+                                "Rubriques masquées. Réactivez-les dans les réglages ⚙️.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(20.dp),
+                            )
+                        }
+                    }
+                    sections.forEach { section ->
+                        item(key = "s_" + section.name) {
+                            SectionBlock(section, brief[section] ?: SectionState(), onOpen)
+                        }
+                    }
+                    item(key = "footer") {
+                        Text(
+                            "Tirez vers le bas pour actualiser",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(top = 24.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
                     }
                 }
-                item(key = "footer") {
-                    Text(
-                        "Tirez vers le bas pour actualiser",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(top = 24.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                }
+            }
+        }
+    }
+}
+
+/** Les trois pays, en pastilles : on touche ou on glisse pour changer. */
+@Composable
+private fun CountryTabs(countries: List<Country>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(50))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        countries.forEachIndexed { i, c ->
+            val on = i == selected
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (on) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .clickable { onSelect(i) }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "${c.flag}  ${c.title}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
         }
     }
@@ -203,7 +257,7 @@ private fun UpdateBanner(state: UpdateState, onInstall: () -> Unit) {
 
 @Composable
 private fun SectionBlock(section: Section, state: SectionState, onOpen: (Story) -> Unit) {
-    Column(Modifier.padding(top = 28.dp)) {
+    Column(Modifier.padding(top = if (section.places == null) 8.dp else 28.dp)) {
         Row(
             Modifier.padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,

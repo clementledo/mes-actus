@@ -48,7 +48,7 @@ object ReaderExtractor {
             fallbackContent(fallback, ogImage)
         } else {
             ReaderContent(
-                title = fallback.title.ifBlank { ogTitle ?: "" },
+                title = (fallback.originalTitle ?: fallback.title).ifBlank { ogTitle ?: "" },
                 imageUrl = ogImage ?: fallback.imageUrl,
                 blocks = blocks,
             )
@@ -56,7 +56,7 @@ object ReaderExtractor {
     }
 
     fun fallbackContent(article: Article, image: String? = null): ReaderContent = ReaderContent(
-        title = article.title,
+        title = article.originalTitle ?: article.title,
         imageUrl = image ?: article.imageUrl,
         blocks = if (article.description.isNotBlank()) listOf(ReaderBlock(BlockType.PARAGRAPH, article.description)) else emptyList(),
         partial = true,

@@ -1,10 +1,10 @@
 name: Fabriquer l'APK
 
-# Chaque envoi sur main fabrique un APK signé et le publie en release (v1.2, v1.3…).
+# La branche dev ne fait que vérifier que tout se fabrique. Chaque envoi sur main fabrique un APK signé et le publie en release (v1.2, v1.3…).
 # L'app voit cette release et propose « Installer » sur son bandeau « Nouvelle version ».
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -64,6 +64,7 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk MesActus.apk
 
       - name: Publier la release
+        if: github.ref == 'refs/heads/main'
         run: |
           git log -1 --pretty=%B > notes.txt
           gh release create "v$VERSION_NAME" MesActus.apk --repo "$REPO" --target "$GITHUB_SHA" \

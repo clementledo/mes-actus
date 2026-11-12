@@ -25,9 +25,14 @@ sujet selon :
 - sa place en tête des unes ;
 - sa fraîcheur (au-delà de 36 h, il disparaît).
 
-Pour ne pas se noyer, chaque rubrique se limite à 3 sujets (2 pour les rubriques locales) : le sujet principal
+Trois onglets, un par pays (France, Canada, Espagne), avec la rubrique nationale puis la rubrique locale.
+Chaque rubrique se limite à 5 sujets (4 pour les rubriques locales) : le sujet principal
 en grand, avec son image, puis les suivants. Un seul titre par événement. Si le flux ne donne pas d'image,
 l'app va chercher celle de l'article.
+
+Les rubriques locales ne gardent que les articles qui citent un de leurs lieux (liste `places` dans
+`Models.kt`) : une info nationale reprise par France 3 Centre-Val de Loire n'apparaît pas dans « Orléans ».
+Les titres et articles espagnols sont traduits en français sur le téléphone (bouton « Voir l'original »).
 
 ## Utilisation
 

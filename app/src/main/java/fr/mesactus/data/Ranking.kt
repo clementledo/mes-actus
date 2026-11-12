@@ -38,6 +38,13 @@ object Ranking {
         return common >= 2 && common.toDouble() / min(a.size, b.size) >= 0.34
     }
 
+    /** L'article parle-t-il bien d'un des lieux de la rubrique locale ? */
+    fun isAbout(article: Article, places: List<String>, notPlaces: List<String> = emptyList()): Boolean {
+        val text = TextNormalizer.normalize(article.title + " " + article.description)
+        if (notPlaces.any { text.contains(" $it") }) return false
+        return places.any { text.contains(" $it") }
+    }
+
     fun topStories(articles: List<Article>, count: Int, now: Long = System.currentTimeMillis()): List<Story> {
         val recent = articles.filter { it.published == 0L || now - it.published in -3_600_000..MAX_AGE_MS }
         val clusters = mutableListOf<MutableList<Pair<Article, Set<String>>>>()

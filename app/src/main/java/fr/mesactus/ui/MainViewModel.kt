@@ -129,7 +129,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     _brief.update { it + (section to (it[section] ?: SectionState()).copy(loading = true)) }
                     val sources = DefaultSources.all.filter { it.zone in section.zones }
                     val result = repo.fetchZone(sources)
-                    val stories = Ranking.topStories(result.articles, section.count)
+                    // Rubrique locale : seulement les articles qui parlent vraiment d'un de ses lieux.
+                    val pool = section.places?.let { pl ->
+                        result.articles.filter { Ranking.isAbout(it, pl, section.notPlaces) }
+                    } ?: result.articles
+                    var stories = Ranking.topStories(pool, section.count)
+                    // Tout en français : les titres espagnols sont traduits sur le téléphone.
+                    val foreign = stories.filter { it.lead.lang != "fr" }
+                    if (foreign.isNotEmpty()) {
+                        // On affiche tout de suite, puis la version traduite (le 1er lancement télécharge le modèle).
+                        val firstPass = stories
+                        _brief.update { it + (section to SectionState(loading = false, stories = firstPass)) }
+                        val translated = runCatching {
+                            foreign.groupBy { it.lead.lang }.flatMap { (lang, group) ->
+                                group.zip(FrenchTranslator.translate(group.map { it.lead.title }, lang))
+                            }.toMap()
+                        }.getOrNull()
+                        if (translated != null) {
+                            stories = stories.map { st ->
+                                translated[st]?.let { st.copy(lead = st.lead.copy(title = it, originalTitle = st.lead.title)) } ?: st
+                            }
+                        }
+                    }
                     _brief.update { it + (section to SectionState(loading = false, stories = stories)) }
                     // Ajoute un visuel aux grands titres qui n'en ont pas (image de la page de l'article).
                     if (stories.any { it.lead.imageUrl == null }) {
@@ -158,7 +179,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _reader.value = ReaderState(article = article, outlets = story.outlets, loading = true)
         readerJob = viewModelScope.launch {
             runCatching { repo.fetchReader(article) }
-                .onSuccess { c -> _reader.update { it.copy(loading = false, content = c) } }
+                .onSuccess { c ->
+                    _reader.update { it.copy(loading = false, content = c) }
+                    // Tout en français par défaut ; « Voir l'original » reste possible.
+                    if (article.lang != "fr") toggleTranslation()
+                }
                 .onFailure { e ->
                     _reader.update {
                         it.copy(
@@ -167,6 +192,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             error = "Impossible de charger l'article (${e.message ?: "erreur réseau"}).",
                         )
                     }
+                    if (article.lang != "fr") toggleTranslation()
                 }
         }
     }
